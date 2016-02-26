@@ -24,6 +24,8 @@
 bool dp_pack_pam_request(DBusMessage *msg, struct pam_data *pd)
 {
     dbus_bool_t db_ret;
+    const char *schemeandhost;
+    const char *url;
     const char *service;
     const char *tty;
     const char *ruser;
@@ -38,6 +40,8 @@ bool dp_pack_pam_request(DBusMessage *msg, struct pam_data *pd)
     int32_t pd_cmd;
 
     if (pd->user == NULL) return false;
+    schemeandhost = pd->schemeandhost ? pd->schemeandhost : "";
+    url = pd->url ? pd->url : "";
     service = pd->service ? pd->service : "";
     tty = pd->tty ? pd->tty : "";
     ruser = pd->ruser ? pd->ruser : "";
@@ -56,6 +60,8 @@ bool dp_pack_pam_request(DBusMessage *msg, struct pam_data *pd)
                                       DBUS_TYPE_STRING, &(pd->user),
                                       DBUS_TYPE_STRING, &(pd->domain),
                                       DBUS_TYPE_STRING, &service,
+                                      DBUS_TYPE_STRING, &schemeandhost,
+                                      DBUS_TYPE_STRING, &url,
                                       DBUS_TYPE_STRING, &tty,
                                       DBUS_TYPE_STRING, &ruser,
                                       DBUS_TYPE_STRING, &rhost,
@@ -94,6 +100,8 @@ bool dp_unpack_pam_request(DBusMessage *msg, TALLOC_CTX *mem_ctx,
                                    DBUS_TYPE_STRING, &(pd.user),
                                    DBUS_TYPE_STRING, &(pd.domain),
                                    DBUS_TYPE_STRING, &(pd.service),
+                                   DBUS_TYPE_STRING, &(pd.schemeandhost),
+                                   DBUS_TYPE_STRING, &(pd.url),
                                    DBUS_TYPE_STRING, &(pd.tty),
                                    DBUS_TYPE_STRING, &(pd.ruser),
                                    DBUS_TYPE_STRING, &(pd.rhost),

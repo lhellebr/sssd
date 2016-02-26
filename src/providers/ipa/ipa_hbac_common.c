@@ -353,6 +353,42 @@ hbac_attrs_to_rule(TALLOC_CTX *mem_ctx,
         goto done;
     }
 
+
+    /* Get scheme and host */
+
+    ret = sysdb_attrs_get_el(hbac_ctx->rules[idx],
+                             IPA_SCHEMEANDHOST, &el);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Could not get scheme and host for rule [%s]\n",
+                  new_rule->name);
+        goto done;
+    }
+    if (el->num_values == 0) {
+        DEBUG(SSSDBG_CONF_SETTINGS, "Scheme and host for rule [%s] is empty.\n", new_rule->name);
+        new_rule->schemeandhost = talloc_strdup(new_rule, "");
+    } else {
+        new_rule->schemeandhost = talloc_strndup(new_rule,
+                                        (const char*) el->values[0].data,
+                                        el->values[0].length);
+    }
+
+    /* Get URL */
+
+    ret = sysdb_attrs_get_el(hbac_ctx->rules[idx],
+                             IPA_URL, &el);
+    if (ret != EOK) {
+        DEBUG(SSSDBG_CRIT_FAILURE, "Could not get URL for rule [%s]\n",
+                  new_rule->name);
+        goto done;
+    }
+    if (el->num_values == 0) {
+        DEBUG(SSSDBG_CONF_SETTINGS, "URL for rule [%s] is empty.\n", new_rule->name);
+        new_rule->url = talloc_strdup(new_rule, "");
+    } else {
+        new_rule->url = talloc_strndup(new_rule,
+                                        (const char*) el->values[0].data,
+                                        el->values[0].length);
+    }
     *rule = new_rule;
     ret = EOK;
 
@@ -441,6 +477,9 @@ hbac_ctx_to_eval_request(TALLOC_CTX *mem_ctx,
     }
 
     eval_req->request_time = time(NULL);
+
+    eval_req->schemeandhost = pd->schemeandhost;
+    eval_req->url = pd->url;
 
     /* Get user the user name and groups,
      * take care of subdomain users as well */

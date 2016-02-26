@@ -1058,6 +1058,20 @@ static int get_pam_items(pam_handle_t *pamh, struct pam_items *pi)
     if (ret != PAM_SUCCESS) return ret;
     if (pi->pamstack_oldauthtok == NULL) pi->pamstack_oldauthtok="";
 
+    pi->schemeandhost = pam_getenv(pamh, "schemeAndHost");
+    if(pi->schemeandhost!=NULL){
+        pi->schemeandhost_size = strlen(pi->schemeandhost)+1;
+    }else{
+        pi->schemeandhost_size = 0;
+    }
+
+    pi->uri = pam_getenv(pamh, "URI");
+    if(pi->uri!=NULL){
+        pi->uri_size = strlen(pi->uri)+1;
+    }else{
+        pi->uri_size = 0;
+    }
+
     pi->cli_pid = getpid();
 
     pi->login_name = pam_modutil_getlogin(pamh);
@@ -1087,6 +1101,8 @@ static void print_pam_items(struct pam_items *pi)
     D(("Tty: %s", CHECK_AND_RETURN_PI_STRING(pi->pam_tty)));
     D(("Ruser: %s", CHECK_AND_RETURN_PI_STRING(pi->pam_ruser)));
     D(("Rhost: %s", CHECK_AND_RETURN_PI_STRING(pi->pam_rhost)));
+    D(("Scheme and host: %s", CHECK_AND_RETURN_PI_STRING(pi->schemeandhost)));
+    D(("URI: %s", CHECK_AND_RETURN_PI_STRING(pi->uri)));
     D(("Pamstack_Authtok: %s",
             CHECK_AND_RETURN_PI_STRING(pi->pamstack_authtok)));
     D(("Pamstack_Oldauthtok: %s",

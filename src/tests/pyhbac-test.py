@@ -156,6 +156,26 @@ class PyHbacRuleTest(unittest.TestCase):
         rule.name = new_name
         self.assertEqual(rule.name, unicode(new_name))
 
+    def testRuleGetSetSchemeAndHost(self):
+        name = "someName"
+        schemeandhost = "http://server"
+
+        rule = pyhbac.HbacRule(name)
+        self.assertEqual(rule.schemeandhost, unicode(""))
+
+        rule.schemeandhost = schemeandhost
+        self.assertEqual(rule.schemeandhost, unicode(schemeandhost))
+
+    def testRuleGetSetUrl(self):
+        name = "someName"
+        url = "/testurl"
+
+        rule = pyhbac.HbacRule(name)
+        self.assertEqual(rule.url, unicode(""))
+
+        rule.url = url
+        self.assertEqual(rule.url, unicode(url))
+
     def testRuleGetSetEnabled(self):
         rule = pyhbac.HbacRule("testRuleGetSetEnabled")
 
@@ -367,23 +387,53 @@ class PyHbacRequestTest(unittest.TestCase):
         # python 2.4 raises TypError, 2.7 raises AttributeError
         self.assertRaises((TypeError, AttributeError), req.__setattr__, "rule_name", "foo")
 
+    def testRuleSchemeAndHost(self):
+        schemeandhost = "http://server"
+        req = pyhbac.HbacRequest()
+        self.assertEqual(req.schemeandhost, "")
+        req.schemeandhost = schemeandhost
+        self.assertEqual(req.schemeandhost, schemeandhost)
+        # python 2.4 raises TypError, 2.7 raises AttributeError
+        self.assertRaises((TypeError, AttributeError), req.__setattr__, "rule_name", "foo")
+
+    def testRuleUrl(self):
+        url = "/testurl"
+        req = pyhbac.HbacRequest()
+        self.assertEqual(req.url, "")
+        req.url = url
+        self.assertEqual(req.url, url)
+        # python 2.4 raises TypError, 2.7 raises AttributeError
+        self.assertRaises((TypeError, AttributeError), req.__setattr__, "rule_name", "foo")
+
     def testEvaluate(self):
         name = "someuser"
         service = "ssh"
         srchost = "host1"
         targethost = "host2"
+        schemeandhost = "http://server"
+        url = "/testurl"
 
         allow_rule = pyhbac.HbacRule("allowRule", enabled=True)
         allow_rule.users.names = [ name ]
         allow_rule.services.names = [ service ]
         allow_rule.srchosts.names = [ srchost ]
         allow_rule.targethosts.names = [ targethost ]
+        allow_rule.schemeandhost = schemeandhost
+        allow_rule.url = url
 
         req = pyhbac.HbacRequest()
         req.user.name = name
         req.service.name = service
         req.srchost.name = srchost
         req.targethost.name = targethost
+        req.schemeandhost = schemeandhost
+        req.url = url
+
+        # The scheme and host of the rule should match the required scheme and host
+        self.assertEqual(req.schemeandhost, allow_rule.schemeandhost)
+
+        # The URL of the rule should match the required URL
+        self.assertEqual(req.url, allow_rule.url)
 
         # Test that an allow rule on its own allows access
         res = req.evaluate((allow_rule,))

@@ -144,6 +144,8 @@ struct hbac_rule_element {
  */
 struct hbac_rule {
     const char *name;
+    const char *schemeandhost;
+    const char *url;
     bool enabled;
 
     /**
@@ -203,6 +205,11 @@ struct hbac_request_element {
  *
  */
 struct hbac_eval_req {
+
+    const char *schemeandhost;
+
+    const char *url;
+
     /** This is a list of service DNs to check,
      * it must consist of the actual service
      * requested, as well as all parent groups

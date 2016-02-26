@@ -348,6 +348,7 @@ hbac_rule_element_set_names(HbacRuleElement *self, PyObject *names,
 static int
 hbac_rule_element_set_groups(HbacRuleElement *self, PyObject *groups,
                              void *closure);
+
 static int
 hbac_rule_element_set_category(HbacRuleElement *self, PyObject *category,
                                void *closure);
@@ -631,6 +632,8 @@ typedef struct {
     PyObject_HEAD
 
     PyObject *name;
+    PyObject *schemeandhost;
+    PyObject *url;
     bool enabled;
 
     HbacRuleElement *users;
@@ -662,6 +665,20 @@ HbacRule_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
 
+    self->schemeandhost = PyUnicode_FromString("");
+    if (self->schemeandhost == NULL) {
+        Py_DECREF(self);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    self->url = PyUnicode_FromString("");
+    if (self->url == NULL) {
+        Py_DECREF(self);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
     self->enabled = false;
 
     self->services = (HbacRuleElement *) HbacRuleElement_new(
@@ -683,6 +700,8 @@ HbacRule_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_XDECREF(self->targethosts);
         Py_XDECREF(self->srchosts);
         Py_DECREF(self->name);
+        Py_DECREF(self->schemeandhost);
+        Py_DECREF(self->url);
         Py_DECREF(self);
         PyErr_NoMemory();
         return NULL;
@@ -695,6 +714,8 @@ static int
 HbacRule_clear(HbacRuleObject *self)
 {
     Py_CLEAR(self->name);
+    Py_CLEAR(self->schemeandhost);
+    Py_CLEAR(self->url);
     Py_CLEAR(self->services);
     Py_CLEAR(self->users);
     Py_CLEAR(self->targethosts);
@@ -713,6 +734,8 @@ static int
 HbacRule_traverse(HbacRuleObject *self, visitproc visit, void *arg)
 {
     Py_VISIT((PyObject *) self->name);
+    Py_VISIT((PyObject *) self->schemeandhost);
+    Py_VISIT((PyObject *) self->url);
     Py_VISIT((PyObject *) self->services);
     Py_VISIT((PyObject *) self->users);
     Py_VISIT((PyObject *) self->targethosts);
@@ -724,19 +747,25 @@ static int
 hbac_rule_set_enabled(HbacRuleObject *self, PyObject *enabled, void *closure);
 static int
 hbac_rule_set_name(HbacRuleObject *self, PyObject *name, void *closure);
+static int
+hbac_rule_set_schemeandhost(HbacRuleObject *self, PyObject *name, void *closure);
+static int
+hbac_rule_set_url(HbacRuleObject *self, PyObject *name, void *closure);
 
 static int
 HbacRule_init(HbacRuleObject *self, PyObject *args, PyObject *kwargs)
 {
-    const char * const kwlist[] = { "name", "enabled", NULL };
+    const char * const kwlist[] = { "name", "enabled", "schemeandhost", "url", NULL };
     PyObject *name = NULL;
+    PyObject *schemeandhost = NULL;
+    PyObject *url = NULL;
     PyObject *empty_tuple = NULL;
     PyObject *enabled=NULL;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwargs,
-                                     sss_py_const_p(char, "O|O"),
+                                     sss_py_const_p(char, "O|OOOO"),
                                      discard_const_p(char *, kwlist),
-                                     &name, &enabled)) {
+                                     &name, &enabled, &schemeandhost, &url)) {
         return -1;
     }
 
@@ -747,6 +776,30 @@ HbacRule_init(HbacRuleObject *self, PyObject *args, PyObject *kwargs)
     }
 
     if (hbac_rule_set_name(self, name, NULL) == -1) {
+        return -1;
+    }
+
+    if (!schemeandhost) {
+        schemeandhost = PyUnicode_FromString("");
+        if (schemeandhost == NULL) {
+            Py_DECREF(self);
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+    if (hbac_rule_set_schemeandhost(self, schemeandhost, NULL) == -1) {
+        return -1;
+    }
+
+    if (!url) {
+        url = PyUnicode_FromString("");
+        if (url == NULL) {
+            Py_DECREF(self);
+            PyErr_NoMemory();
+            return NULL;
+        }
+    }
+    if (hbac_rule_set_url(self, url, NULL) == -1) {
         return -1;
     }
 
@@ -861,6 +914,66 @@ hbac_rule_get_name(HbacRuleObject *self, void *closure)
 
     /* setter does typechecking but let us be paranoid */
     PyErr_Format(PyExc_TypeError, "name must be a string or Unicode");
+    return NULL;
+}
+
+static int
+hbac_rule_set_schemeandhost(HbacRuleObject *self, PyObject *schemeandhost, void *closure)
+{
+    CHECK_ATTRIBUTE_DELETE(schemeandhost, "schemeandhost");
+
+    if (!PyBytes_Check(schemeandhost) && !PyUnicode_Check(schemeandhost)) {
+        PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
+        return -1;
+    }
+
+    SAFE_SET(self->schemeandhost, schemeandhost);
+    return 0;
+}
+
+static PyObject *
+hbac_rule_get_schemeandhost(HbacRuleObject *self, void *closure)
+{
+    if (PyUnicode_Check(self->schemeandhost)) {
+        Py_INCREF(self->schemeandhost);
+        return self->schemeandhost;
+    } else if (PyBytes_Check(self->schemeandhost)) {
+        return PyUnicode_FromEncodedObject(self->schemeandhost,
+                                           PYHBAC_ENCODING, PYHBAC_ENCODING_ERRORS);
+    }
+
+    /* setter does typechecking but let us be paranoid */
+    PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
+    return NULL;
+}
+
+static int
+hbac_rule_set_url(HbacRuleObject *self, PyObject *url, void *closure)
+{
+    CHECK_ATTRIBUTE_DELETE(url, "url");
+
+    if (!PyBytes_Check(url) && !PyUnicode_Check(url)) {
+        PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
+        return -1;
+    }
+
+    SAFE_SET(self->url, url);
+    return 0;
+}
+
+static PyObject *
+hbac_rule_get_url(HbacRuleObject *self, void *closure)
+{
+    if (PyUnicode_Check(self->url)) {
+        Py_INCREF(self->url);
+        return self->url;
+    } else if (PyBytes_Check(self->url)) {
+        return PyUnicode_FromEncodedObject(self->url,
+                                           PYHBAC_ENCODING, PYHBAC_ENCODING_ERRORS);
+    }
+
+    /* setter does typechecking but let us be paranoid */
+    PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
     return NULL;
 }
 
@@ -1032,6 +1145,10 @@ PyDoc_STRVAR(HbacRuleObject_enabled__doc__,
 "(bool) Is the rule enabled");
 PyDoc_STRVAR(HbacRuleObject_name__doc__,
 "(string) The name of the rule");
+PyDoc_STRVAR(HbacRuleObject_schemeandhost__doc__,
+"(string) The scheme and host set for the rule");
+PyDoc_STRVAR(HbacRuleObject_url__doc__,
+"(string) The URL set for the rule");
 
 static PyGetSetDef py_hbac_rule_getset[] = {
     { discard_const_p(char, "enabled"),
@@ -1044,6 +1161,18 @@ static PyGetSetDef py_hbac_rule_getset[] = {
       (getter) hbac_rule_get_name,
       (setter) hbac_rule_set_name,
       HbacRuleObject_name__doc__,
+      NULL },
+
+    { discard_const_p(char, "schemeandhost"),
+      (getter) hbac_rule_get_schemeandhost,
+      (setter) hbac_rule_set_schemeandhost,
+      HbacRuleObject_schemeandhost__doc__,
+      NULL },
+
+    { discard_const_p(char, "url"),
+      (getter) hbac_rule_get_url,
+      (setter) hbac_rule_set_url,
+      HbacRuleObject_url__doc__,
       NULL },
 
     {NULL, 0, 0, 0, NULL} /* Sentinel */
@@ -1092,6 +1221,8 @@ HbacRule_to_native(HbacRuleObject *pyrule)
 {
     struct hbac_rule *rule = NULL;
     PyObject *utf_name;
+    PyObject *utf_schemeandhost;
+    PyObject *utf_url;
 
     rule = PyMem_Malloc(sizeof(struct hbac_rule));
     if (!rule) {
@@ -1114,6 +1245,28 @@ HbacRule_to_native(HbacRuleObject *pyrule)
     rule->name = py_strdup(PyBytes_AsString(utf_name));
     Py_DECREF(utf_name);
     if (rule->name == NULL) {
+        goto fail;
+    }
+
+    utf_schemeandhost = get_utf8_string(pyrule->schemeandhost, "schemeandhost");
+    if (utf_schemeandhost == NULL) {
+        return NULL;
+    }
+
+    rule->schemeandhost = py_strdup(PyBytes_AsString(utf_schemeandhost));
+    Py_DECREF(utf_schemeandhost);
+    if (rule->schemeandhost == NULL) {
+        goto fail;
+    }
+
+    utf_url = get_utf8_string(pyrule->url, "url");
+    if (utf_url == NULL) {
+        return NULL;
+    }
+
+    rule->url = py_strdup(PyBytes_AsString(utf_url));
+    Py_DECREF(utf_url);
+    if (rule->url == NULL) {
         goto fail;
     }
 
@@ -1424,6 +1577,8 @@ typedef struct {
     HbacRequestElement *srchost;
 
     PyObject *rule_name;
+    PyObject *schemeandhost;
+    PyObject *url;
 } HbacRequest;
 
 static PyObject *
@@ -1471,6 +1626,8 @@ HbacRequest_clear(HbacRequest *self)
     Py_CLEAR(self->targethost);
     Py_CLEAR(self->srchost);
     Py_CLEAR(self->rule_name);
+    Py_CLEAR(self->schemeandhost);
+    Py_CLEAR(self->url);
     return 0;
 }
 
@@ -1491,6 +1648,14 @@ HbacRequest_traverse(HbacRequest *self, visitproc visit, void *arg)
     return 0;
 }
 
+
+static int
+hbac_request_set_schemeandhost(HbacRequest *self, PyObject *schemeandhost,
+                            void *closure);
+
+static int
+hbac_request_set_url(HbacRequest *self, PyObject *url,
+                            void *closure);
 static int
 HbacRequest_init(HbacRequest *self, PyObject *args, PyObject *kwargs)
 {
@@ -1503,6 +1668,20 @@ HbacRequest_init(HbacRequest *self, PyObject *args, PyObject *kwargs)
     }
 
     self->rule_name = NULL;
+
+    self->schemeandhost = PyUnicode_FromString("");
+    if (self->schemeandhost == NULL) {
+        Py_DECREF(self);
+        PyErr_NoMemory();
+        return NULL;
+    }
+
+    self->url = PyUnicode_FromString("");
+    if (self->url == NULL) {
+        Py_DECREF(self);
+        PyErr_NoMemory();
+        return NULL;
+    }
 
     if (HbacRequestElement_init(self->user, empty_tuple, NULL) == -1 ||
         HbacRequestElement_init(self->service, empty_tuple, NULL) == -1 ||
@@ -1658,6 +1837,64 @@ hbac_request_element_get_rule_name(HbacRequest *self, void *closure)
 }
 
 static PyObject *
+hbac_request_get_schemeandhost(HbacRequest *self, void *closure)
+{
+    Py_INCREF(self->schemeandhost);
+    return self->schemeandhost;
+
+    PyErr_Format(PyExc_TypeError, "schemeandhost is not Unicode");
+    return NULL;
+}
+
+static int
+hbac_request_set_schemeandhost(HbacRequest *self, PyObject *schemeandhost, void *closure)
+{
+    CHECK_ATTRIBUTE_DELETE(schemeandhost, "schemeandhost");
+
+    if(schemeandhost==NULL){
+        PyErr_Format(PyExc_TypeError, "URL must not be NULL");
+        return -1;
+    }
+    if (!PyBytes_Check(schemeandhost) && !PyUnicode_Check(schemeandhost)) {
+        PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
+        return -1;
+    }
+
+    SAFE_SET(self->schemeandhost, schemeandhost);
+    return 0;
+}
+
+static PyObject *
+hbac_request_get_url(HbacRequest *self, void *closure)
+{
+    //if (PyUnicode_Check(self->url)) {
+        Py_INCREF(self->url);
+        return self->url;
+    //}
+
+    PyErr_Format(PyExc_TypeError, "url is not Unicode");
+    return NULL;
+}
+
+static int
+hbac_request_set_url(HbacRequest *self, PyObject *url, void *closure)
+{
+    CHECK_ATTRIBUTE_DELETE(url, "url");
+
+    if(url==NULL){
+        PyErr_Format(PyExc_TypeError, "URL must not be NULL");
+        return -1;
+    }
+    if (!PyBytes_Check(url) && !PyUnicode_Check(url)) {
+        PyErr_Format(PyExc_TypeError, "URL must be a string or Unicode");
+        return -1;
+    }
+
+    SAFE_SET(self->url, url);
+    return 0;
+}
+
+static PyObject *
 HbacRequest_repr(HbacRequest *self)
 {
     PyObject *user_repr;
@@ -1765,6 +2002,20 @@ static PyGetSetDef py_hbac_request_getset[] = {
       HbacRequest_rule_name__doc__,
       NULL },
 
+    { discard_const_p(char, "schemeandhost"),
+      (getter) hbac_request_get_schemeandhost,
+      (setter) hbac_request_set_schemeandhost,
+      NULL, /* read only */
+      HbacRequest_rule_name__doc__,
+      NULL },
+
+    { discard_const_p(char, "url"),
+      (getter) hbac_request_get_url,
+      (setter) hbac_request_set_url,
+      NULL, /* read only */
+      HbacRequest_rule_name__doc__,
+      NULL },
+
     { NULL, 0, 0, 0, NULL } /* Sentinel */
 };
 
@@ -1805,6 +2056,8 @@ free_hbac_eval_req(struct hbac_eval_req *req)
 static struct hbac_eval_req *
 HbacRequest_to_native(HbacRequest *pyreq)
 {
+    PyObject *utf_schemeandhost;
+    PyObject *utf_url;
     struct hbac_eval_req *req = NULL;
 
     req = PyMem_Malloc(sizeof(struct hbac_eval_req));
@@ -1819,6 +2072,41 @@ HbacRequest_to_native(HbacRequest *pyreq)
                      "The request must be of type HbacRequest\n");
         goto fail;
     }
+
+
+    if(pyreq->schemeandhost==NULL){
+        PyErr_Format(PyExc_TypeError, "URL is NULL\n");
+        goto fail;
+    }
+
+    utf_schemeandhost = get_utf8_string(pyreq->schemeandhost, "schemeandhost");
+    if (utf_schemeandhost == NULL) {
+        return NULL;
+    }
+
+    req->schemeandhost = py_strdup(PyBytes_AsString(utf_schemeandhost));
+    Py_DECREF(utf_schemeandhost);
+    if (req->schemeandhost == NULL) {
+        goto fail;
+    }
+
+
+    if(pyreq->url==NULL){
+        PyErr_Format(PyExc_TypeError, "URL is NULL\n");
+        goto fail;
+    }
+
+    utf_url = get_utf8_string(pyreq->url, "url");
+    if (utf_url == NULL) {
+        return NULL;
+    }
+
+    req->url = py_strdup(PyBytes_AsString(utf_url));
+    Py_DECREF(utf_url);
+    if (req->url == NULL) {
+        goto fail;
+    }
+
 
     req->service = HbacRequestElement_to_native(pyreq->service);
     req->user = HbacRequestElement_to_native(pyreq->user);

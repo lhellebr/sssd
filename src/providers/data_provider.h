@@ -165,6 +165,8 @@ struct pam_data {
     char *domain;
     char *user;
     char *service;
+    char *schemeandhost;
+    char *url;
     char *tty;
     char *ruser;
     char *rhost;

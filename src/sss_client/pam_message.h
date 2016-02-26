@@ -34,6 +34,8 @@ struct pam_items {
     const char *pam_tty;
     const char *pam_ruser;
     const char *pam_rhost;
+    const char *schemeandhost;
+    const char *uri;
     char *pam_authtok;
     char *pam_newauthtok;
     const char *pamstack_authtok;
@@ -43,6 +45,8 @@ struct pam_items {
     size_t pam_tty_size;
     size_t pam_ruser_size;
     size_t pam_rhost_size;
+    size_t schemeandhost_size;
+    size_t uri_size;
     enum sss_authtok_type pam_authtok_type;
     size_t pam_authtok_size;
     enum sss_authtok_type pam_newauthtok_type;

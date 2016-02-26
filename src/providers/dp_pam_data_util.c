@@ -103,6 +103,16 @@ errno_t copy_pam_data(TALLOC_CTX *mem_ctx, struct pam_data *src,
         ret =  ENOMEM;
         goto failed;
     }
+    pd->schemeandhost = talloc_strdup(pd, src->schemeandhost);
+    if (pd->schemeandhost == NULL && src->schemeandhost != NULL) {
+        ret =  ENOMEM;
+        goto failed;
+    }
+    pd->url = talloc_strdup(pd, src->url);
+    if (pd->url == NULL && src->url != NULL) {
+        ret =  ENOMEM;
+        goto failed;
+    }
     pd->tty = talloc_strdup(pd, src->tty);
     if (pd->tty == NULL && src->tty != NULL) {
         ret =  ENOMEM;
@@ -167,6 +177,8 @@ void pam_print_data(int l, struct pam_data *pd)
     DEBUG(l, "command: %s\n", sss_cmd2str(pd->cmd));
     DEBUG(l, "domain: %s\n", PAM_SAFE_ITEM(pd->domain));
     DEBUG(l, "user: %s\n", PAM_SAFE_ITEM(pd->user));
+    DEBUG(l, "scheme and host: %s\n", PAM_SAFE_ITEM(pd->schemeandhost));
+    DEBUG(l, "url: %s\n", PAM_SAFE_ITEM(pd->url));
     DEBUG(l, "service: %s\n", PAM_SAFE_ITEM(pd->service));
     DEBUG(l, "tty: %s\n", PAM_SAFE_ITEM(pd->tty));
     DEBUG(l, "ruser: %s\n", PAM_SAFE_ITEM(pd->ruser));

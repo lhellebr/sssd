@@ -328,6 +328,8 @@ enum sss_authtok_type {
 
 enum pam_item_type {
     SSS_PAM_ITEM_EMPTY = 0x0000,
+    SSS_PAM_ITEM_SCHEMEANDHOST,
+    SSS_PAM_ITEM_URI,
     SSS_PAM_ITEM_USER,
     SSS_PAM_ITEM_SERVICE,
     SSS_PAM_ITEM_TTY,

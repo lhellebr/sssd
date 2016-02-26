@@ -191,3 +191,19 @@ bool sss_string_equal(bool cs, const char *s1, const char *s2)
 
     return sss_utf8_case_eq((const uint8_t *)s1, (const uint8_t *)s2) == EOK;
 }
+
+#ifdef HAVE_LIBUNISTRING
+size_t sss_utf8_strlen(const char *s)
+{
+    return mbstowcs(NULL,s,0); // u8_strlen returns the number of bytes, not characters
+}
+
+#elif defined(HAVE_GLIB2)
+size_t sss_utf8_strlen(const char *s)
+{
+    return g_utf8_strlen((const gchar*)s, -1);
+}
+
+#else
+#error No unicode library
+#endif

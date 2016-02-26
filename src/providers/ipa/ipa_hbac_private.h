@@ -54,6 +54,8 @@
 #define IPA_MEMBER_SERVICE "memberService"
 #define IPA_SERVICE_CATEGORY "serviceCategory"
 #define IPA_TRUE_VALUE "TRUE"
+#define IPA_SCHEMEANDHOST "schemeAndHost"
+#define IPA_URL "url"
 
 #define IPA_HBAC_BASE_TMPL "cn=hbac,%s"
 #define IPA_SERVICES_BASE_TMPL "cn=hbacservices,cn=accounts,%s"

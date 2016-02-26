@@ -725,6 +725,8 @@ errno_t hbac_get_cached_rules(TALLOC_CTX *mem_ctx,
                             IPA_EXTERNAL_HOST,
                             IPA_MEMBER_HOST,
                             IPA_HOST_CATEGORY,
+                            IPA_SCHEMEANDHOST,
+                            IPA_URL,
                             NULL };
 
     tmp_ctx = talloc_new(NULL);

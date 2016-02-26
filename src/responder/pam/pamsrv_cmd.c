@@ -265,6 +265,14 @@ static int pam_parse_in_data_v2(struct pam_data *pd,
             }
 
             switch(type) {
+                case SSS_PAM_ITEM_SCHEMEANDHOST:
+                    ret = extract_string(&pd->schemeandhost, size, body, blen, &c);
+                    if (ret != EOK) return ret;
+                    break;
+                case SSS_PAM_ITEM_URI:
+                    ret = extract_string(&pd->url, size, body, blen, &c);
+                    if (ret != EOK) return ret;
+                    break;
                 case SSS_PAM_ITEM_USER:
                     ret = extract_string(&pd->logon_name, size, body, blen, &c);
                     if (ret != EOK) return ret;

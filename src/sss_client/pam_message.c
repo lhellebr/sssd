@@ -109,7 +109,11 @@ int pack_message_v3(struct pam_items *pi, size_t *size, uint8_t **buffer)
 
     len = sizeof(uint32_t) + sizeof(uint32_t);
 
-    len +=  *pi->pam_user != '\0' ?
+    len += pi->schemeandhost != NULL && *pi->schemeandhost != '\0'?
+                2*sizeof(uint32_t) + pi->schemeandhost_size : 0;
+    len += pi->uri != NULL && *pi->uri != '\0'?
+                2*sizeof(uint32_t) + pi->uri_size : 0;
+    len += *pi->pam_user != '\0' ?
                 2*sizeof(uint32_t) + pi->pam_user_size : 0;
     len += *pi->pam_service != '\0' ?
                 2*sizeof(uint32_t) + pi->pam_service_size : 0;
@@ -135,6 +139,12 @@ int pack_message_v3(struct pam_items *pi, size_t *size, uint8_t **buffer)
 
     rp = 0;
     SAFEALIGN_SETMEM_UINT32(buf, SSS_START_OF_PAM_REQUEST, &rp);
+
+    rp += add_string_item(SSS_PAM_ITEM_SCHEMEANDHOST, pi->schemeandhost, pi->schemeandhost_size,
+                          &buf[rp]);
+
+    rp += add_string_item(SSS_PAM_ITEM_URI, pi->uri, pi->uri_size,
+                          &buf[rp]);
 
     rp += add_string_item(SSS_PAM_ITEM_USER, pi->pam_user, pi->pam_user_size,
                           &buf[rp]);

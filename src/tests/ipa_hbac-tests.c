@@ -54,6 +54,9 @@
 /* These don't make sense for a user/group/service but they do the job and
  * every one is from a different codepage */
 /* Latin Extended A - "Czech" */
+const uint8_t schemeandhost_utf8_lowcase[] = { 'h', 't', 't', 'p', ':', '/', '/', 0xC4, 0x8D, 'e', 'c', 'h', 0x0 };
+const uint8_t schemeandhost_utf8_upcase[] = { 'H', 'T', 'T', 'P', ':', '/', '/',  0xC4, 0x8C, 'E', 'C', 'H', 0x0 };
+const uint8_t url_utf8_lowcase[] = { '/', 't', 'e', 's', 't', 'u', 'r', 0xC4, 0x8D, 'l', 0x0};
 const uint8_t user_utf8_lowcase[] = { 0xC4, 0x8D, 'e', 'c', 'h', 0x0 };
 const uint8_t user_utf8_upcase[] = { 0xC4, 0x8C, 'e', 'c', 'h', 0x0 };
 const uint8_t user_utf8_lowcase_neg[] = { 0xC4, 0x8E, 'e', 'c', 'h', 0x0 };
@@ -202,6 +205,10 @@ START_TEST(ipa_hbac_test_allow_all)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -210,6 +217,10 @@ START_TEST(ipa_hbac_test_allow_all)
     get_allow_all_rule(rules, &rules[0]);
     rules[0]->name = talloc_strdup(rules[0], "Allow All");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[1] = NULL;
 
     /* Validate this rule */
@@ -250,6 +261,10 @@ START_TEST(ipa_hbac_test_allow_user)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -260,6 +275,10 @@ START_TEST(ipa_hbac_test_allow_user)
     /* Modify the rule to allow only a specific user */
     rules[0]->name = talloc_strdup(rules[0], "Allow user");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->users->category = HBAC_CATEGORY_NULL;
 
     rules[0]->users->names = talloc_array(rules[0], const char *, 2);
@@ -333,6 +352,8 @@ START_TEST(ipa_hbac_test_allow_utf8)
     eval_req->user->name = (const char *) &user_utf8_lowcase;
     eval_req->srchost->name = (const char *) &srchost_utf8_lowcase;
     eval_req->service->name = (const char *) &service_utf8_lowcase;
+    eval_req->schemeandhost = (const char *) &schemeandhost_utf8_lowcase;
+    eval_req->url = (const char *) &url_utf8_lowcase;
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -343,6 +364,8 @@ START_TEST(ipa_hbac_test_allow_utf8)
     rules[0]->name = talloc_strdup(rules[0], "Allow user");
     fail_if(rules[0]->name == NULL);
     rules[0]->users->category = HBAC_CATEGORY_NULL;
+    rules[0]->schemeandhost = (const char *) &schemeandhost_utf8_upcase;
+    rules[0]->url = (const char *) &url_utf8_lowcase;
 
     /* Modify the rule to allow only a specific user */
     rules[0]->users->names = talloc_array(rules[0], const char *, 2);
@@ -446,6 +469,10 @@ START_TEST(ipa_hbac_test_allow_group)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -456,6 +483,10 @@ START_TEST(ipa_hbac_test_allow_group)
     /* Modify the rule to allow only a group of users */
     rules[0]->name = talloc_strdup(rules[0], "Allow group");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->users->category = HBAC_CATEGORY_NULL;
 
     rules[0]->users->names = NULL;
@@ -525,6 +556,10 @@ START_TEST(ipa_hbac_test_allow_svc)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -535,6 +570,10 @@ START_TEST(ipa_hbac_test_allow_svc)
     /* Modify the rule to allow only a specific service */
     rules[0]->name = talloc_strdup(rules[0], "Allow service");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->services->category = HBAC_CATEGORY_NULL;
 
     rules[0]->services->names = talloc_array(rules[0], const char *, 2);
@@ -603,6 +642,10 @@ START_TEST(ipa_hbac_test_allow_svcgroup)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -613,6 +656,10 @@ START_TEST(ipa_hbac_test_allow_svcgroup)
     /* Modify the rule to allow only a group of users */
     rules[0]->name = talloc_strdup(rules[0], "Allow servicegroup");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->services->category = HBAC_CATEGORY_NULL;
 
     rules[0]->services->names = NULL;
@@ -682,6 +729,10 @@ START_TEST(ipa_hbac_test_allow_srchost)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -692,6 +743,10 @@ START_TEST(ipa_hbac_test_allow_srchost)
     /* Modify the rule to allow only a specific service */
     rules[0]->name = talloc_strdup(rules[0], "Allow srchost");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->srchosts->category = HBAC_CATEGORY_NULL;
 
     rules[0]->srchosts->names = talloc_array(rules[0], const char *, 2);
@@ -760,6 +815,10 @@ START_TEST(ipa_hbac_test_allow_srchostgroup)
     get_test_user(eval_req, &eval_req->user);
     get_test_service(eval_req, &eval_req->service);
     get_test_srchost(eval_req, &eval_req->srchost);
+    eval_req->schemeandhost = talloc_strdup(eval_req, "http://server");
+    fail_if(eval_req->schemeandhost == NULL);
+    eval_req->url = talloc_strdup(eval_req, "/testurl");
+    fail_if(eval_req->url == NULL);
 
     /* Create the rules to evaluate against */
     rules = talloc_array(test_ctx, struct hbac_rule *, 2);
@@ -770,6 +829,10 @@ START_TEST(ipa_hbac_test_allow_srchostgroup)
     /* Modify the rule to allow only a group of users */
     rules[0]->name = talloc_strdup(rules[0], "Allow srchostgroup");
     fail_if(rules[0]->name == NULL);
+    rules[0]->schemeandhost = talloc_strdup(rules[0], "http://server");
+    fail_if(rules[0]->schemeandhost == NULL);
+    rules[0]->url = talloc_strdup(rules[0], "/testurl");
+    fail_if(rules[0]->url == NULL);
     rules[0]->srchosts->category = HBAC_CATEGORY_NULL;
 
     rules[0]->srchosts->names = NULL;

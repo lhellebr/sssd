@@ -41,5 +41,7 @@ bool sss_utf8_check(const uint8_t *s, size_t n);
 
 errno_t sss_utf8_case_eq(const uint8_t *s1, const uint8_t *s2);
 
+size_t sss_utf8_strlen(const char *s);
+
 
 #endif /* SSS_UTF8_H_ */

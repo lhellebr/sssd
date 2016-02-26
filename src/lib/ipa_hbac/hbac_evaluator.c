@@ -140,7 +140,8 @@ bool hbac_rule_is_complete(struct hbac_rule *rule, uint32_t *missing_attrs)
 
 enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
                                              struct hbac_eval_req *hbac_req,
-                                             enum hbac_error_code *error);
+                                             enum hbac_error_code *error,
+                                             unsigned * const prefix_length);
 
 enum hbac_eval_result hbac_evaluate(struct hbac_rule **rules,
                                     struct hbac_eval_req *hbac_req,
@@ -151,6 +152,8 @@ enum hbac_eval_result hbac_evaluate(struct hbac_rule **rules,
     enum hbac_error_code ret;
     enum hbac_eval_result result = HBAC_EVAL_DENY;
     enum hbac_eval_result_int intermediate_result;
+    unsigned prefix_length;
+    unsigned longest_prefix_length = 0;
 
     HBAC_DEBUG(HBAC_DBG_INFO, "[< hbac_evaluate()\n");
     hbac_req_debug_print(hbac_req);
@@ -167,25 +170,34 @@ enum hbac_eval_result hbac_evaluate(struct hbac_rule **rules,
 
     for (i = 0; rules[i]; i++) {
         hbac_rule_debug_print(rules[i]);
-        intermediate_result = hbac_evaluate_rule(rules[i], hbac_req, &ret);
+        intermediate_result = hbac_evaluate_rule(rules[i], hbac_req, &ret, &prefix_length);
         if (intermediate_result == HBAC_EVAL_UNMATCHED) {
             /* This rule did not match at all. Skip it */
             HBAC_DEBUG(HBAC_DBG_INFO, "The rule [%s] did not match.\n",
                        rules[i]->name);
+            if(prefix_length > longest_prefix_length){
+                result = HBAC_EVAL_DENY;
+            }
+            longest_prefix_length = longest_prefix_length > prefix_length ? longest_prefix_length : prefix_length;
             continue;
         } else if (intermediate_result == HBAC_EVAL_MATCHED) {
-            HBAC_DEBUG(HBAC_DBG_INFO, "ALLOWED by rule [%s].\n", rules[i]->name);
-            result = HBAC_EVAL_ALLOW;
-            if (info) {
-                (*info)->code = HBAC_SUCCESS;
-                (*info)->rule_name = strdup(rules[i]->name);
-                if (!(*info)->rule_name) {
-                    HBAC_DEBUG(HBAC_DBG_ERROR, "Out of memory.\n");
-                    result = HBAC_EVAL_ERROR;
-                    (*info)->code = HBAC_ERROR_OUT_OF_MEMORY;
+            if(prefix_length >= longest_prefix_length){
+                HBAC_DEBUG(HBAC_DBG_INFO, "ALLOWED by rule [%s].\n", rules[i]->name);
+                longest_prefix_length = prefix_length;
+		result = HBAC_EVAL_ALLOW;
+                if (info) {
+      	            if((*info)->rule_name != NULL){
+                        free((*info)->rule_name);
+                    }
+                    (*info)->code = HBAC_SUCCESS;
+                    (*info)->rule_name = strdup(rules[i]->name);
+                    if (!(*info)->rule_name) {
+                        HBAC_DEBUG(HBAC_DBG_ERROR, "Out of memory.\n");
+                        result = HBAC_EVAL_ERROR;
+                        (*info)->code = HBAC_ERROR_OUT_OF_MEMORY;
+                    }
                 }
             }
-            break;
         } else {
             /* An error occurred processing this rule */
             HBAC_DEBUG(HBAC_DBG_ERROR,
@@ -216,10 +228,16 @@ static errno_t hbac_evaluate_element(struct hbac_rule_element *rule_el,
                                      struct hbac_request_element *req_el,
                                      bool *matched);
 
+bool is_first_prefix_of_second(const char*first, const char *second){
+    return second == strstr(second, first);
+}
+
 enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
                                              struct hbac_eval_req *hbac_req,
-                                             enum hbac_error_code *error)
+                                             enum hbac_error_code *error,
+                                             unsigned * const prefix_length)
 {
+    *prefix_length = 0; /* prefix = 0 => URL not a prefix at all *OR* matching failed before evaluating URL; prefix = x => URL is a prefix and it's length is x */
     errno_t ret;
     bool matched;
 
@@ -232,7 +250,9 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
     if (!rule->users
      || !rule->services
      || !rule->targethosts
-     || !rule->srchosts) {
+     || !rule->srchosts
+     || !rule->schemeandhost
+     || !rule->url) {
         HBAC_DEBUG(HBAC_DBG_INFO,
                    "Rule [%s] cannot be parsed, some elements are empty\n",
                    rule->name);
@@ -293,6 +313,38 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
     } else if (!matched) {
         return HBAC_EVAL_UNMATCHED;
     }
+
+    /* Check scheme and host part of URI */
+    if(strcmp(rule->schemeandhost,"")){
+        /* if the rule contains no scheme and host, anything matches, otherwise: */
+        if(strcmp(hbac_req->schemeandhost,"")){
+            /* if the application didn't send information about scheme and host (the string
+             is empty), anything matches (for backwards compatibility), otherwise: */
+            if(sss_utf8_case_eq(hbac_req->schemeandhost,rule->schemeandhost)){
+                /* fail if used scheme and host are not the same (case insensitive) */
+                return HBAC_EVAL_UNMATCHED;
+            }
+        }else{
+            HBAC_DEBUG(HBAC_DBG_INFO,
+                       "The request contained no scheme and host. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking scheme and host into account.\n");
+        }
+    }else{
+        HBAC_DEBUG(HBAC_DBG_INFO,
+                   "The rule contained no scheme and host. Any requested scheme and host matches if it matches in other aspects.\n");
+    }
+
+    /* Check URL and count prefix length */
+    if(strcmp(hbac_req->url,"")){ /* if the request contains no URL, it probably comes from a service not supporting URI-based HBAC; we shall match the rules without taking URLs into account */
+        /* if the request DOES contain URL: */
+            if(!is_first_prefix_of_second(rule->url, hbac_req->url)){
+                return HBAC_EVAL_UNMATCHED;
+            }
+            *prefix_length = sss_utf8_strlen(rule->url);
+    }else{
+        HBAC_DEBUG(HBAC_DBG_INFO,
+                   "The request contained no URI. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking URL's into account.\n");
+    }
+
     return HBAC_EVAL_MATCHED;
 }
 
@@ -489,6 +541,16 @@ static void hbac_rule_debug_print(struct hbac_rule *rule)
     if (rule) {
         HBAC_DEBUG(HBAC_DBG_TRACE, "\tRULE [%s] [%s]:\n",
                    rule->name, (rule->enabled) ? "ENABLED" : "DISABLED");
+        if (rule->schemeandhost) {
+            HBAC_DEBUG(HBAC_DBG_TRACE, "\tscheme and host: [%s]\n", rule->schemeandhost);
+        } else {
+            HBAC_DEBUG(HBAC_DBG_TRACE, "\tscheme and host (none)\n");
+        }
+        if (rule->url) {
+            HBAC_DEBUG(HBAC_DBG_TRACE, "\turi: [%s]\n", rule->url);
+        } else {
+            HBAC_DEBUG(HBAC_DBG_TRACE, "\turi (none)\n");
+        }
         if (rule->services) {
             HBAC_DEBUG(HBAC_DBG_TRACE, "\tservices:\n");
             hbac_rule_element_debug_print(rule->services, "services");
