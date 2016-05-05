@@ -27,6 +27,7 @@
 #include "lib/ipa_hbac/ipa_hbac.h"
 
 #define IPA_HBAC_RULE "ipaHBACRule"
+#define IPA_HBAC_RULE_URI "ipaHBACRuleURI"
 
 #define IPA_HBAC_SERVICE "ipaHBACService"
 #define IPA_HBAC_SERVICE_GROUP "ipaHBACServiceGroup"

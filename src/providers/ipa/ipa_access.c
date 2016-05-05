@@ -732,7 +732,7 @@ errno_t hbac_get_cached_rules(TALLOC_CTX *mem_ctx,
     tmp_ctx = talloc_new(NULL);
     if (tmp_ctx == NULL) return ENOMEM;
 
-    filter = talloc_asprintf(tmp_ctx, "(objectClass=%s)", IPA_HBAC_RULE);
+    filter = talloc_asprintf(tmp_ctx, "(|(objectClass=%s)(objectClass=%s))", IPA_HBAC_RULE, IPA_HBAC_RULE_URI);
     if (filter == NULL) {
         ret = ENOMEM;
         goto done;
