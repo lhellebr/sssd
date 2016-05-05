@@ -260,6 +260,37 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
         return HBAC_EVAL_MATCH_ERROR;
     }
 
+    /* Check scheme and host part of URI */
+    if(strcmp(rule->schemeandhost,"")){
+        /* if the rule contains no scheme and host, anything matches, otherwise: */
+        if(strcmp(hbac_req->schemeandhost,"")){
+            /* if the application didn't send information about scheme and host (the string
+             is empty), anything matches (for backwards compatibility), otherwise: */
+            if(sss_utf8_case_eq(hbac_req->schemeandhost,rule->schemeandhost)){
+                /* fail if used scheme and host are not the same (case insensitive) */
+                return HBAC_EVAL_UNMATCHED;
+            }
+        }else{
+            HBAC_DEBUG(HBAC_DBG_INFO,
+                       "The request contained no scheme and host. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking scheme and host into account.\n");
+        }
+    }else{
+        HBAC_DEBUG(HBAC_DBG_INFO,
+                   "The rule contained no scheme and host. Any requested scheme and host matches if it matches in other aspects.\n");
+    }
+
+    /* Check URL and count prefix length */
+    if(strcmp(hbac_req->url,"")){ /* if the request contains no URL, it probably comes from a service not supporting URI-based HBAC; we shall match the rules without taking URLs into account */
+        /* if the request DOES contain URL: */
+            if(!is_first_prefix_of_second(rule->url, hbac_req->url)){
+                return HBAC_EVAL_UNMATCHED;
+            }
+            *prefix_length = sss_utf8_strlen(rule->url);
+    }else{
+        HBAC_DEBUG(HBAC_DBG_INFO,
+                   "The request contained no URI. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking URL's into account.\n");
+    }
+
     /* Check users */
     ret = hbac_evaluate_element(rule->users,
                                 hbac_req->user,
@@ -312,37 +343,6 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
         return HBAC_EVAL_MATCH_ERROR;
     } else if (!matched) {
         return HBAC_EVAL_UNMATCHED;
-    }
-
-    /* Check scheme and host part of URI */
-    if(strcmp(rule->schemeandhost,"")){
-        /* if the rule contains no scheme and host, anything matches, otherwise: */
-        if(strcmp(hbac_req->schemeandhost,"")){
-            /* if the application didn't send information about scheme and host (the string
-             is empty), anything matches (for backwards compatibility), otherwise: */
-            if(sss_utf8_case_eq(hbac_req->schemeandhost,rule->schemeandhost)){
-                /* fail if used scheme and host are not the same (case insensitive) */
-                return HBAC_EVAL_UNMATCHED;
-            }
-        }else{
-            HBAC_DEBUG(HBAC_DBG_INFO,
-                       "The request contained no scheme and host. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking scheme and host into account.\n");
-        }
-    }else{
-        HBAC_DEBUG(HBAC_DBG_INFO,
-                   "The rule contained no scheme and host. Any requested scheme and host matches if it matches in other aspects.\n");
-    }
-
-    /* Check URL and count prefix length */
-    if(strcmp(hbac_req->url,"")){ /* if the request contains no URL, it probably comes from a service not supporting URI-based HBAC; we shall match the rules without taking URLs into account */
-        /* if the request DOES contain URL: */
-            if(!is_first_prefix_of_second(rule->url, hbac_req->url)){
-                return HBAC_EVAL_UNMATCHED;
-            }
-            *prefix_length = sss_utf8_strlen(rule->url);
-    }else{
-        HBAC_DEBUG(HBAC_DBG_INFO,
-                   "The request contained no URI. Assuming the service doesn't support URI-based HBAC. Evaluating rules without taking URL's into account.\n");
     }
 
     return HBAC_EVAL_MATCHED;
