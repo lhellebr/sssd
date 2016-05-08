@@ -260,6 +260,47 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
         return HBAC_EVAL_MATCH_ERROR;
     }
 
+    /* Check services */
+    ret = hbac_evaluate_element(rule->services,
+                                hbac_req->service,
+                                &matched);
+    if (ret != EOK) {
+        HBAC_DEBUG(HBAC_DBG_ERROR,
+                   "Cannot parse service elements of rule [%s]\n", rule->name);
+        *error = HBAC_ERROR_UNPARSEABLE_RULE;
+        return HBAC_EVAL_MATCH_ERROR;
+    } else if (!matched) {
+        return HBAC_EVAL_UNMATCHED;
+    }
+
+    /* Check target hosts */
+    ret = hbac_evaluate_element(rule->targethosts,
+                                hbac_req->targethost,
+                                &matched);
+    if (ret != EOK) {
+        HBAC_DEBUG(HBAC_DBG_ERROR,
+                   "Cannot parse targethost elements of rule [%s]\n",
+                   rule->name);
+        *error = HBAC_ERROR_UNPARSEABLE_RULE;
+        return HBAC_EVAL_MATCH_ERROR;
+    } else if (!matched) {
+        return HBAC_EVAL_UNMATCHED;
+    }
+
+    /* Check source hosts */
+    ret = hbac_evaluate_element(rule->srchosts,
+                                hbac_req->srchost,
+                                &matched);
+    if (ret != EOK) {
+        HBAC_DEBUG(HBAC_DBG_ERROR,
+                   "Cannot parse srchost elements of rule [%s]\n",
+                   rule->name);
+        *error = HBAC_ERROR_UNPARSEABLE_RULE;
+        return HBAC_EVAL_MATCH_ERROR;
+    } else if (!matched) {
+        return HBAC_EVAL_UNMATCHED;
+    }
+
     /* Check scheme and host part of URI */
     if(strcmp(rule->schemeandhost,"")){
         /* if the rule contains no scheme and host, anything matches, otherwise: */
@@ -298,47 +339,6 @@ enum hbac_eval_result_int hbac_evaluate_rule(struct hbac_rule *rule,
     if (ret != EOK) {
         HBAC_DEBUG(HBAC_DBG_ERROR,
                    "Cannot parse user elements of rule [%s]\n", rule->name);
-        *error = HBAC_ERROR_UNPARSEABLE_RULE;
-        return HBAC_EVAL_MATCH_ERROR;
-    } else if (!matched) {
-        return HBAC_EVAL_UNMATCHED;
-    }
-
-    /* Check services */
-    ret = hbac_evaluate_element(rule->services,
-                                hbac_req->service,
-                                &matched);
-    if (ret != EOK) {
-        HBAC_DEBUG(HBAC_DBG_ERROR,
-                   "Cannot parse service elements of rule [%s]\n", rule->name);
-        *error = HBAC_ERROR_UNPARSEABLE_RULE;
-        return HBAC_EVAL_MATCH_ERROR;
-    } else if (!matched) {
-        return HBAC_EVAL_UNMATCHED;
-    }
-
-    /* Check target hosts */
-    ret = hbac_evaluate_element(rule->targethosts,
-                                hbac_req->targethost,
-                                &matched);
-    if (ret != EOK) {
-        HBAC_DEBUG(HBAC_DBG_ERROR,
-                   "Cannot parse targethost elements of rule [%s]\n",
-                   rule->name);
-        *error = HBAC_ERROR_UNPARSEABLE_RULE;
-        return HBAC_EVAL_MATCH_ERROR;
-    } else if (!matched) {
-        return HBAC_EVAL_UNMATCHED;
-    }
-
-    /* Check source hosts */
-    ret = hbac_evaluate_element(rule->srchosts,
-                                hbac_req->srchost,
-                                &matched);
-    if (ret != EOK) {
-        HBAC_DEBUG(HBAC_DBG_ERROR,
-                   "Cannot parse srchost elements of rule [%s]\n",
-                   rule->name);
         *error = HBAC_ERROR_UNPARSEABLE_RULE;
         return HBAC_EVAL_MATCH_ERROR;
     } else if (!matched) {
